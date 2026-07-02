@@ -1,0 +1,23 @@
+{
+  "default": {
+    "name": "Sample Co",
+    "description": "A sample company profile shown because People Data Labs was unavailable or the company was not found.",
+    "employees": 120,
+    "estimated_revenue": "$10M-$25M",
+    "total_funding": "$18M"
+  },
+  "notion": {
+    "name": "Notion Labs",
+    "description": "Productivity and collaboration software combining notes, docs, wikis, and project management.",
+    "employees": 600,
+    "estimated_revenue": "$100M-$250M",
+    "total_funding": "$343M"
+  },
+  "figma": {
+    "name": "Figma",
+    "description": "Collaborative interface design tool used by product and design teams.",
+    "employees": 1200,
+    "estimated_revenue": "$400M-$600M",
+    "total_funding": "$333M"
+  }
+}

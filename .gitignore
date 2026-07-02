@@ -2,7 +2,18 @@
 __pycache__/
 *.py[cod]
 .venv/
+.pytest_cache/
 
 # Environment & secrets
 .env
+.env.local
 *.db
+backend/data/
+
+# Frontend
+frontend/node_modules/
+frontend/.next/
+frontend/.env*.local
+
+# OS
+.DS_Store

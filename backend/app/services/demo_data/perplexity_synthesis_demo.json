@@ -1,0 +1,9 @@
+{
+  "headline_template": "What Reddit is saying about {topic}",
+  "summary_template": "Based on {post_count} recent Reddit posts, overall sentiment around \"{topic}\" reads as {sentiment_label} (weighted avg {avg_sentiment}). This summary was generated in demo mode because the synthesis model was unavailable, but the underlying post data is real.",
+  "recommendations": [
+    "Monitor community discussion for this topic over the next few weeks to confirm the signal holds.",
+    "Reach out directly to a few vocal posters to understand the reasoning behind their sentiment.",
+    "Validate this reading against another source (survey, support tickets) before making a major decision."
+  ]
+}

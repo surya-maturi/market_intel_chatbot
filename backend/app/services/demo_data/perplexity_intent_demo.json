@@ -1,0 +1,6 @@
+{
+  "default_intent": "sentiment",
+  "competitor_signal_words": ["competitor", "vs", "versus", "compare", "compared to", "against", "rival", "as a company", "headcount", "funding", "revenue"],
+  "trend_signal_words": ["trend", "trending", "growth", "growing", "popular", "momentum", "rising"],
+  "stopwords": ["the", "a", "an", "is", "are", "what", "how", "about", "for", "of", "in", "on", "to", "and", "do", "does", "people", "think", "feel", "say", "with"]
+}
