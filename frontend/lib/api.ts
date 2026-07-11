@@ -1,6 +1,9 @@
 import type { ChatHistoryResponse, ChatStreamEvent, HealthResponse } from "./types";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+// Nullish coalescing, not ||: an explicitly empty string means "same origin, no
+// base URL" (used when frontend and backend are rewritten under one Vercel domain).
+// Only a genuinely unset env var should fall back to the local dev default.
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
 export function parseSSEBlock(rawEvent: string): ChatStreamEvent[] {
   const events: ChatStreamEvent[] = [];

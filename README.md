@@ -115,23 +115,44 @@ crashing.
 
 ## Deploying
 
-The frontend and backend deploy separately. Vercel is a good fit for the Next.js
-frontend, but not for the backend as built here — SQLite needs a persistent disk, and
-a multi-step LangGraph run streamed over SSE doesn't suit Vercel's serverless execution
-model. Deploy them to different hosts and connect them with an environment variable.
+There are two ways to put this on Vercel, depending on whether the backend goes there
+too. Whichever you pick, be aware of the underlying risk with hosting the backend on
+Vercel: SQLite needs a persistent disk (serverless invocations don't reliably keep local
+files between calls, so chat history can silently disappear), and a multi-step LangGraph
+run streamed over SSE is a worse fit for a serverless execution model than a long-running
+process. Watch for data loss / timeouts in testing before relying on it.
 
-### Frontend → Vercel
+### Option A: one Vercel project, both services (root `vercel.json`)
 
+The root [`vercel.json`](vercel.json) defines `frontend` and `backend` as services under
+one Vercel project, with `/api/(.*)` rewritten to the backend and everything else to the
+frontend — this matches the backend's routes, which already live under `/api/...`
+(`/api/health`, `/api/chat/...`).
+
+1. Import this repo into Vercel as a single project (leave Root Directory as the repo
+   root so `vercel.json` is picked up).
+2. Set `NEXT_PUBLIC_API_BASE_URL` to an **explicit empty string** — this makes the
+   frontend call same-origin relative paths (e.g. `/api/chat/stream`) instead of an
+   absolute URL, which the rewrites route to the backend service. No CORS config is
+   needed, since both services share one domain.
+3. Set the backend's other env vars (`PERPLEXITY_API_KEY`, `REDDIT_CLIENT_ID`, etc. —
+   see `.env.example`) on the same Vercel project.
+
+### Option B: frontend on Vercel, backend elsewhere
+
+If Option A's serverless constraints turn out to be a problem in practice, split them:
+
+**Frontend → Vercel**
 1. Import this repo into Vercel and set **Root Directory** to `frontend` (Project
    Settings → General) — this is a monorepo, so Vercel needs to be told the Next.js app
-   isn't at the repo root. Framework detection, install, and build commands are picked
-   up automatically once that's set.
-2. Set the `NEXT_PUBLIC_API_BASE_URL` environment variable to your deployed backend's
-   public URL (see `frontend/.env.example`).
+   isn't at the repo root.
+2. Set `NEXT_PUBLIC_API_BASE_URL` to your backend's public URL (see
+   `frontend/.env.example`) — leave this unset locally and it defaults to
+   `http://localhost:8000`.
 3. After deploying, add the resulting `https://<your-app>.vercel.app` URL (and any
    preview-deployment domains you use) to the backend's `CORS_ORIGINS`.
 
-### Backend → any host with a persistent process and disk
+**Backend → any host with a persistent process and disk**
 
 Deploy `backend/` (the provided `backend/Dockerfile` works as-is) to a host that gives
 you a long-running process and persistent storage for the SQLite file — e.g. Render,
