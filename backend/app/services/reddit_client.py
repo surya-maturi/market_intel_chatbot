@@ -23,6 +23,7 @@ class RedditClient:
             client_id=self._settings.reddit_client_id,
             client_secret=self._settings.reddit_client_secret,
             user_agent=self._settings.reddit_user_agent,
+            requestor_kwargs={"timeout": self._settings.request_timeout_seconds},
         )
         try:
             subreddit = await reddit.subreddit("all")

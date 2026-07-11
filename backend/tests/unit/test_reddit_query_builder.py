@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.config import Settings
 from app.services.reddit_client import RedditClient, _filter_and_rank
@@ -49,3 +50,31 @@ def test_filter_ranks_by_score_descending():
     ]
     result = _filter_and_rank(subs)
     assert [p.id for p in result] == ["high", "mid", "low"]
+
+
+async def test_search_passes_configured_timeout_to_asyncpraw_requestor():
+    # A hung Reddit call should time out rather than block a request indefinitely;
+    # asyncpraw takes this via requestor_kwargs, not a top-level constructor arg.
+    settings = Settings(
+        _env_file=None,
+        reddit_client_id="id",
+        reddit_client_secret="secret",
+        request_timeout_seconds=7.5,
+    )
+    client = RedditClient(settings)
+
+    async def _empty_search(*args, **kwargs):
+        return
+        yield  # pragma: no cover - makes this an async generator
+
+    mock_subreddit = MagicMock()
+    mock_subreddit.search = MagicMock(return_value=_empty_search())
+
+    mock_reddit = MagicMock()
+    mock_reddit.subreddit = AsyncMock(return_value=mock_subreddit)
+    mock_reddit.close = AsyncMock()
+
+    with patch("app.services.reddit_client.asyncpraw.Reddit", return_value=mock_reddit) as mock_ctor:
+        await client.search(["startups"])
+
+    assert mock_ctor.call_args.kwargs["requestor_kwargs"] == {"timeout": 7.5}
