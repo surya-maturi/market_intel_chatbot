@@ -136,7 +136,11 @@ frontend — this matches the backend's routes, which already live under `/api/.
    absolute URL, which the rewrites route to the backend service. No CORS config is
    needed, since both services share one domain.
 3. Set the backend's other env vars (`PERPLEXITY_API_KEY`, `REDDIT_CLIENT_ID`, etc. —
-   see `.env.example`) on the same Vercel project.
+   see `.env.example`) on the same Vercel project, **including `DB_PATH=/tmp/chat_history.db`**.
+   Vercel's Python functions run on a read-only filesystem except `/tmp` — the default
+   `data/chat_history.db` path will crash the backend on every cold start (every request
+   fails, not just some). `/tmp` itself is wiped between invocations, so this avoids the
+   crash but does not fix the data-loss risk noted above.
 
 ### Option B: frontend on Vercel, backend elsewhere
 
