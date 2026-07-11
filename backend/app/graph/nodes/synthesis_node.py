@@ -12,17 +12,23 @@ _SCHEMA = {
         "summary": {"type": "string"},
         "sentiment_label": {"type": "string", "enum": ["positive", "negative", "mixed", "neutral"]},
         "recommendations": {"type": "array", "items": {"type": "string"}},
+        "cited_posts": {"type": "array", "items": {"type": "integer"}},
     },
-    "required": ["headline", "summary", "sentiment_label", "recommendations"],
+    "required": ["headline", "summary", "sentiment_label", "recommendations", "cited_posts"],
 }
 
-_SYSTEM_PROMPT = """You are a market intelligence assistant for startup founders. You are given a set of \
-recent Reddit posts about a topic, plus an aggregate sentiment reading computed from them. Write a concise, \
-actionable synthesis for a founder deciding what to do next.
+_SYSTEM_PROMPT = """You are a market intelligence assistant for startup founders. You are given a numbered \
+list of recent Reddit posts about a topic, plus an aggregate sentiment reading computed from them. Write a \
+concise, actionable synthesis for a founder deciding what to do next.
 
-Respond with a single JSON object: headline (one sentence), summary (2-4 sentences grounded in the posts \
-provided, do not invent facts not present in the posts), sentiment_label (positive|negative|mixed|neutral), \
-recommendations (2-5 short actionable bullet points for a startup founder)."""
+Ground every claim in the summary in one or more of the numbered posts - do not invent facts, statistics, or \
+events that are not present in the posts provided. If no posts are provided, or none of them say anything \
+substantive about the topic, say plainly that there isn't enough Reddit discussion to draw a conclusion \
+instead of inventing one.
+
+Respond with a single JSON object: headline (one sentence), summary (2-4 sentences), sentiment_label \
+(positive|negative|mixed|neutral), recommendations (2-5 short actionable bullet points for a startup founder), \
+cited_posts (a list of the post numbers, e.g. [1, 3], that the summary actually draws on - empty if none)."""
 
 
 def make_synthesize(client: PerplexityClient):
@@ -45,14 +51,7 @@ def make_synthesize(client: PerplexityClient):
         )
 
         compound_by_title = {ps.title: ps.compound for ps in sentiment.top_posts}
-        sources = [
-            SourceCitation(
-                title=p.title,
-                url=f"https://reddit.com{p.permalink}" if p.permalink.startswith("/") else p.permalink,
-                sentiment=_bucket(compound_by_title.get(p.title, 0.0)),
-            )
-            for p in top_posts[:SYNTHESIS_SOURCE_COUNT]
-        ]
+        sources = _resolve_sources(raw, top_posts, compound_by_title, used_demo)
 
         result = SynthesisResult(
             headline=raw["headline"],
@@ -84,6 +83,37 @@ def _bucket(compound: float) -> str:
     return "neutral"
 
 
+def _resolve_sources(
+    raw: dict, top_posts: list, compound_by_title: dict, used_demo: bool
+) -> list[SourceCitation]:
+    """Prefer the posts the model says it actually grounded the summary in. Demo mode
+    has no model attribution to draw on, and a model that cited nothing usable falls
+    back to the highest-engagement posts rather than showing no sources at all."""
+    cited = [] if used_demo else _valid_cited_posts(raw.get("cited_posts"), len(top_posts))
+    chosen = [top_posts[i - 1] for i in cited] if cited else top_posts[:SYNTHESIS_SOURCE_COUNT]
+
+    return [
+        SourceCitation(
+            title=p.title,
+            url=f"https://reddit.com{p.permalink}" if p.permalink.startswith("/") else p.permalink,
+            sentiment=_bucket(compound_by_title.get(p.title, 0.0)),
+        )
+        for p in chosen[:SYNTHESIS_SOURCE_COUNT]
+    ]
+
+
+def _valid_cited_posts(raw_cited, post_count: int) -> list[int]:
+    if not isinstance(raw_cited, list):
+        return []
+    seen: set[int] = set()
+    ordered: list[int] = []
+    for value in raw_cited:
+        if isinstance(value, int) and 1 <= value <= post_count and value not in seen:
+            seen.add(value)
+            ordered.append(value)
+    return ordered
+
+
 def _build_prompt(query: str, intent: str, top_posts: list, sentiment: SentimentResult) -> str:
     lines = [
         f"User query: {query}",
@@ -94,11 +124,11 @@ def _build_prompt(query: str, intent: str, top_posts: list, sentiment: Sentiment
             f"{sentiment.negative_pct}% negative)"
         ),
         "",
-        "Top posts:",
+        "Numbered posts (cite these by number in cited_posts):" if top_posts else "No posts were found for this topic.",
     ]
-    for p in top_posts:
+    for i, p in enumerate(top_posts, start=1):
         snippet = (p.selftext or "")[:200]
-        lines.append(f'- "{p.title}" (score={p.score}, comments={p.num_comments}) {snippet}')
+        lines.append(f'[{i}] "{p.title}" (score={p.score}, comments={p.num_comments}) {snippet}')
     return "\n".join(lines)
 
 
