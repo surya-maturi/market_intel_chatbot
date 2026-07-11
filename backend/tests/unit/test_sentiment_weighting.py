@@ -55,3 +55,24 @@ async def test_demo_flag_mirrors_reddit_flag():
 
     result2 = await analyze_sentiment({"posts": posts, "demo_flags": {"reddit": False}})
     assert result2["demo_flags"]["sentiment"] is False
+
+
+async def test_author_deleted_body_is_scored_on_title_alone():
+    # selftext is exactly what Reddit returns for a post whose author deleted it;
+    # scoring the literal string "[deleted]" would pollute the signal.
+    posts = [_post("Great news for founders", "[deleted]", 10, 1)]
+    result = await analyze_sentiment({"posts": posts, "demo_flags": {}})
+
+    analyzer = SentimentIntensityAnalyzer()
+    expected = analyzer.polarity_scores("Great news for founders")["compound"]
+    assert result["sentiment"].raw_scores == [expected]
+
+
+async def test_noisy_text_scores_the_same_as_its_cleaned_equivalent():
+    noisy = [_post("Check this out https://example.com/spam", "**amazing** product, love it!!!", 10, 1)]
+    clean = [_post("Check this out", "amazing product, love it!!!", 10, 1)]
+
+    noisy_result = await analyze_sentiment({"posts": noisy, "demo_flags": {}})
+    clean_result = await analyze_sentiment({"posts": clean, "demo_flags": {}})
+
+    assert noisy_result["sentiment"].raw_scores == clean_result["sentiment"].raw_scores

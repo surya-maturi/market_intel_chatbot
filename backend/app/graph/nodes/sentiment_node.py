@@ -1,4 +1,6 @@
+import html
 import math
+import re
 
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
@@ -6,6 +8,20 @@ from app.graph.state import ChatState
 from app.schemas.sentiment import PostSentiment, SentimentResult
 
 _analyzer = SentimentIntensityAnalyzer()
+
+_URL_RE = re.compile(r"https?://\S+")
+_MARKDOWN_RE = re.compile(r"[*_~^]")
+_PLACEHOLDER_TEXT = {"[removed]", "[deleted]"}
+
+
+def _clean_text(value: str) -> str:
+    value = (value or "").strip()
+    if value.lower() in _PLACEHOLDER_TEXT:
+        return ""
+    value = html.unescape(value)
+    value = _URL_RE.sub("", value)
+    value = _MARKDOWN_RE.sub("", value)
+    return value.strip()
 
 
 async def analyze_sentiment(state: ChatState) -> dict:
@@ -33,7 +49,7 @@ async def analyze_sentiment(state: ChatState) -> dict:
     negative = 0
 
     for p in posts:
-        text = f"{p.title} {p.selftext}".strip()
+        text = f"{_clean_text(p.title)} {_clean_text(p.selftext)}".strip()
         compound = _analyzer.polarity_scores(text)["compound"]
         raw_scores.append(compound)
 
