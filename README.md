@@ -76,6 +76,7 @@ frontend/
   components/results/    Sentiment chart, synthesis card, company card
   lib/                   SSE client, types, session storage
   hooks/useChatStream.ts  Streaming state machine
+  .env.example           NEXT_PUBLIC_API_BASE_URL
 docker-compose.yml
 .env.example
 ```
@@ -111,6 +112,32 @@ docker-compose up --build
 Any key left blank in `.env` makes that service run in demo mode: the app stays fully
 functional and every response that used sample data is visibly labeled, instead of
 crashing.
+
+## Deploying
+
+The frontend and backend deploy separately. Vercel is a good fit for the Next.js
+frontend, but not for the backend as built here — SQLite needs a persistent disk, and
+a multi-step LangGraph run streamed over SSE doesn't suit Vercel's serverless execution
+model. Deploy them to different hosts and connect them with an environment variable.
+
+### Frontend → Vercel
+
+1. Import this repo into Vercel and set **Root Directory** to `frontend` (Project
+   Settings → General) — this is a monorepo, so Vercel needs to be told the Next.js app
+   isn't at the repo root. Framework detection, install, and build commands are picked
+   up automatically once that's set.
+2. Set the `NEXT_PUBLIC_API_BASE_URL` environment variable to your deployed backend's
+   public URL (see `frontend/.env.example`).
+3. After deploying, add the resulting `https://<your-app>.vercel.app` URL (and any
+   preview-deployment domains you use) to the backend's `CORS_ORIGINS`.
+
+### Backend → any host with a persistent process and disk
+
+Deploy `backend/` (the provided `backend/Dockerfile` works as-is) to a host that gives
+you a long-running process and persistent storage for the SQLite file — e.g. Render,
+Railway, Fly.io, or a VPS. Set the same environment variables as `.env.example`, with
+`CORS_ORIGINS` including your Vercel frontend's URL(s), e.g.
+`CORS_ORIGINS=["https://your-app.vercel.app"]` (must be valid JSON array syntax).
 
 ## Running tests
 
