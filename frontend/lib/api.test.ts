@@ -1,5 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { parseSSEBlock } from "./api";
+import { parseSSEBlock, resolveApiBaseUrl } from "./api";
+
+describe("resolveApiBaseUrl", () => {
+  it("defaults to localhost:8000 when unset (local dev)", () => {
+    expect(resolveApiBaseUrl(undefined)).toBe("http://localhost:8000");
+  });
+
+  it("resolves to an empty string for the same-origin single-project setup", () => {
+    expect(resolveApiBaseUrl("same-origin")).toBe("");
+  });
+
+  it("passes through an explicit absolute URL unchanged", () => {
+    expect(resolveApiBaseUrl("https://my-backend.onrender.com")).toBe("https://my-backend.onrender.com");
+  });
+});
 
 describe("parseSSEBlock", () => {
   it("parses a single data line into one event", () => {

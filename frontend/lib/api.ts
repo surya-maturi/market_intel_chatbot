@@ -1,9 +1,17 @@
 import type { ChatHistoryResponse, ChatStreamEvent, HealthResponse } from "./types";
 
-// Nullish coalescing, not ||: an explicitly empty string means "same origin, no
-// base URL" (used when frontend and backend are rewritten under one Vercel domain).
-// Only a genuinely unset env var should fall back to the local dev default.
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+// "same-origin" is an explicit, unambiguous opt-in for the single-Vercel-project setup
+// (frontend + backend rewritten under one domain via the root vercel.json) - relying on
+// an empty string here instead would depend on whether the hosting UI even preserves a
+// blank environment variable value, which isn't guaranteed. An unset var still falls
+// back to the local dev default.
+export function resolveApiBaseUrl(raw: string | undefined): string {
+  if (raw === undefined) return "http://localhost:8000";
+  if (raw === "same-origin") return "";
+  return raw;
+}
+
+const API_BASE_URL = resolveApiBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL);
 
 export function parseSSEBlock(rawEvent: string): ChatStreamEvent[] {
   const events: ChatStreamEvent[] = [];

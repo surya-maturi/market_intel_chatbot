@@ -131,10 +131,12 @@ frontend — this matches the backend's routes, which already live under `/api/.
 
 1. Import this repo into Vercel as a single project (leave Root Directory as the repo
    root so `vercel.json` is picked up).
-2. Set `NEXT_PUBLIC_API_BASE_URL` to an **explicit empty string** — this makes the
+2. Set `NEXT_PUBLIC_API_BASE_URL` to the literal value `same-origin` — this makes the
    frontend call same-origin relative paths (e.g. `/api/chat/stream`) instead of an
    absolute URL, which the rewrites route to the backend service. No CORS config is
-   needed, since both services share one domain.
+   needed, since both services share one domain. (An earlier version of this doc said
+   to leave the value blank instead — don't rely on that, since it depends on whether
+   the hosting UI preserves an empty string value at all.)
 3. Set the backend's other env vars (`PERPLEXITY_API_KEY`, `REDDIT_CLIENT_ID`, etc. —
    see `.env.example`) on the same Vercel project, **including `DB_PATH=/tmp/chat_history.db`**.
    Vercel's Python functions run on a read-only filesystem except `/tmp` — the default
